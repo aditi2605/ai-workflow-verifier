@@ -1,4 +1,4 @@
-## AI Workflow Verifier
+# AI Workflow Verifier
 
 A small Python and Streamlit app that uses an LLM to structure messy messages and validate the output against expected rules.
 
