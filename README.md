@@ -1,109 +1,311 @@
-# AI Workflow Verifier
+## AI Workflow Verifier
 
-AI Workflow Verifier is a small Python and Streamlit project that uses an LLM to turn a messy customer message into structured JSON, then checks whether the response follows a set of expected rules.
+A small Python and Streamlit app that uses an LLM to structure messy messages and validate the output against expected rules.
 
-The first workflow focuses on cloud sales lead qualification. A user can paste a customer enquiry, and the app asks Gemini to extract the main category, pain point and suggested next step. The verifier then checks whether the response is valid JSON, includes the required fields and uses an allowed category.
+---
 
-This project is not intended to be a large production system. I built it to practise working with LLM APIs, prompt design, JSON validation and simple verification logic around AI output.
+## Overview
+
+AI Workflow Verifier is a small project built with Python, Streamlit and the Gemini API.
+
+The app takes an unstructured message, sends it to an LLM, and asks for a structured JSON response. It then verifies whether the response is usable by checking the format, required fields, allowed values and empty fields.
+
+The app currently supports three workflows:
+
+- **Cloud sales lead qualifier**: structures customer enquiries by identifying the category, pain point and suggested next step.
+- **Bug report structurer**: turns unclear user issues into structured bug reports for an engineering team.
+- **Software requirement cleaner**: turns rough stakeholder requests into clearer user stories, acceptance criteria and business value.
+
+This is not intended to be a large production system. I built it to practise working with LLM APIs, prompt design, JSON validation and simple verification logic around AI output.
+
+---
 
 ## Why I built this
 
-LLMs can be useful, but they do not always return responses in the format an application expects. They may return markdown, miss required fields, add extra text or produce an output that is not useful for the workflow.
+LLMs can be useful, but they do not always return responses in the exact format an application expects. They may return markdown, miss required fields, add extra text, or produce an output that does not match the workflow.
 
-I wanted to build a small project that shows how an AI response can be checked before it is treated as usable. The aim was to go beyond a basic chatbot and think more about how AI output could fit into a real software or business process.
+I wanted to build something that goes beyond a basic chatbot and shows how AI output can be checked before it is treated as usable.
+
+The main idea is simple:
+
+> Generate the output, then verify it.
+
+---
 
 ## What the app does
 
-The current version allows a user to:
+The app allows a user to:
 
-- paste a customer or business message
+- choose a workflow
+- paste a messy business, customer or software message
 - send the message to Gemini
 - receive a structured JSON response
 - check whether the response passes validation
-- see a score and reason for the result
+- see a pass or fail result, score and reason
+
+---
+
+## Workflows
+
+### 1. Cloud sales lead qualifier
+
+This workflow structures a customer enquiry for a cloud sales or technical team.
 
 Example input:
 
 ```text
-Hi, we are a small company using old on premise servers. We want to move to Azure but are unsure about security and cost.
+Hi, we are a small company using old on-premise servers. We want to move to Azure but are unsure about security and cost.
+```
 
 Expected structured output:
 
+```json
 {
   "category": "cloud_migration",
-  "pain_point": "The company is using old on premise servers and is unsure about Azure migration, security and cost.",
+  "pain_point": "The company is using old on-premise servers and is unsure about Azure migration, security and cost.",
   "suggested_next_step": "Arrange a discovery call to understand their current infrastructure, security concerns and migration goals."
 }
+```
 
-## The verifier checks:
+Allowed categories:
 
-- Whether the response is valid JSON
-- Whether all required fields are present
-- Whether the category is one of the allowed values
-- Whether important fields are not empty
-- Current workflow
-- Cloud sales lead qualifier
-
-This workflow is designed to structure a customer enquiry for a cloud sales or technical team.
-
-## Allowed categories:
-
+```text
 cloud_migration
 cyber_security
 microsoft_365
 support
 general
+```
 
-## Required fields:
+Required fields:
 
-## category
+```text
+category
 pain_point
 suggested_next_step
+```
+
+---
+
+### 2. Bug report structurer
+
+This workflow takes an unclear user issue and turns it into a clearer bug report for an engineering team.
+
+Example input:
+
+```text
+The login page keeps failing after I reset my password. I get the reset email and change the password, but when I try to log in again, it says invalid credentials. This is stopping users from accessing their account.
+```
+
+Expected structured output:
+
+```json
+{
+  "title": "Login fails after password reset",
+  "steps_to_reproduce": [
+    "Request a password reset",
+    "Change the password using the reset email",
+    "Return to the login page",
+    "Try logging in with the new password"
+  ],
+  "expected_result": "The user should be able to log in successfully with the new password.",
+  "actual_result": "The system shows an invalid credentials error.",
+  "likely_area": "authentication",
+  "priority": "high"
+}
+```
+
+Allowed likely areas:
+
+```text
+authentication
+frontend
+backend
+database
+api
+performance
+unknown
+```
+
+Allowed priorities:
+
+```text
+low
+medium
+high
+```
+
+Required fields:
+
+```text
+title
+steps_to_reproduce
+expected_result
+actual_result
+likely_area
+priority
+```
+
+---
+
+### 3. Software requirement cleaner
+
+This workflow takes a rough stakeholder request and turns it into a clearer software requirement.
+
+Example input:
+
+```text
+Our admin team keeps copying customer data from spreadsheets into the CRM. Sometimes they miss fields or create duplicates. We need a better way to upload, validate and check the data before it goes into the system.
+```
+
+Expected structured output:
+
+```json
+{
+  "user_story": "As an admin user, I want to upload and validate customer data before it enters the CRM so that I can reduce missing fields and duplicate records.",
+  "acceptance_criteria": [
+    "The user can upload customer data from a spreadsheet.",
+    "The system highlights missing required fields.",
+    "The system detects possible duplicate records before import."
+  ],
+  "business_value": "Reduces manual data entry errors and improves CRM data quality.",
+  "priority": "medium",
+  "system_area": "CRM data import"
+}
+```
+
+Allowed priorities:
+
+```text
+low
+medium
+high
+```
+
+Required fields:
+
+```text
+user_story
+acceptance_criteria
+business_value
+priority
+system_area
+```
+
+---
+
+## Verification logic
+
+Each workflow has its own verifier rules.
+
+The verifier checks whether the LLM response is usable for the selected workflow. It checks things such as:
+
+- whether the response can be parsed as valid JSON
+- whether all required fields are present
+- whether fields that should be lists are returned as lists
+- whether values such as category, likely area and priority are within the allowed options
+- whether important fields are not empty
+
+If the output passes, the app returns a score of `100`.
+
+If the output fails, the app shows a lower score and explains what went wrong.
+
+Example verifier result:
+
+```json
+{
+  "passed": true,
+  "score": 100,
+  "reason": "Valid response with required fields and allowed values."
+}
+```
+
+---
 
 ## Tech stack
+
+```text
 Python
 Streamlit
 Gemini API
+python-dotenv
 JSON validation
+```
+
+---
 
 
-# How to run locally
 
--Clone the repository:
--git clone https://github.com/aditi2605/ai-workflow-verifier.git
--cd ai-workflow-verifier
--Create and activate a virtual environment:
--python3 -m venv .venv
--source .venv/bin/activate
+## How to run locally
 
-##Install dependencies:
--pip install -r requirements.txt
--Create a .env file in the project root:
--GEMINI_API_KEY=your_api_key_here
+Clone the repository:
 
-##Run the app:
--streamlit run app.py
+```bash
+git clone https://github.com/aditi2605/ai-workflow-verifier.git
+cd ai-workflow-verifier
+```
 
-# What I learnt
+Create and activate a virtual environment:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+Create a `.env` file in the project root:
+
+```bash
+GEMINI_API_KEY=your_api_key_here
+```
+
+Run the app:
+
+```bash
+streamlit run app.py
+```
+
+---
+
+## What I learnt
 
 While building this project, I practised:
--calling an LLM API from a Python application
--writing prompts for structured JSON output
--handling cases where the model returns markdown or invalid JSON
--validating model output against expected rules
--using Streamlit to build a simple interface
--keeping API keys out of source control
 
-## The main learning point was that AI output should not be trusted automatically. Even when the prompt asks for a specific format, the application still needs checks around the result.
+- calling an LLM API from a Python application
+- writing prompts for structured JSON output
+- handling cases where the model returns markdown or invalid JSON
+- validating model output against expected rules
+- creating separate validation rules for different workflows
+- building a simple Streamlit interface
+- keeping API keys out of source control
 
-##Planned improvements:
-I would like to extend the app with more workflows, such as:
--bug report structuring
--software requirement cleaning
--scoring model outputs with more detailed validation rules
--showing suggested fixes when an output fails validation
+The main learning point was that AI output should not be trusted automatically. Even when a prompt asks for a specific format, the application still needs checks around the result.
 
-These improvements would make the project more useful across software engineering, support and business workflows.
+---
 
-##Status
-This is an early version of the project. The first workflow is working locally, and the next step is to add more workflow types and improve the validation logic.
+## Next steps
+
+Planned improvements include:
+
+- improving validation feedback when an output fails
+- showing suggested fixes for failed responses
+- adding clearer examples for each workflow
+- improving the interface layout
+- adding basic tests for the verifier functions
+
+---
+
+## Status
+
+The app currently supports three workflows:
+
+- cloud sales lead qualification
+- bug report structuring
+- software requirement cleaning
+
+Each workflow has its own prompt structure and verifier rules. The next step is to improve the validation feedback and make the interface easier to use.
